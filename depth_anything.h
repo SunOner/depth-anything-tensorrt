@@ -13,13 +13,13 @@ class DepthAnything
 {
 public:
 	DepthAnything();
-    void init(std::string model_path, nvinfer1::ILogger& logger);
+    void init(std::string model_path, nvinfer1::ILogger& logger, bool use_int8 = true);
 	cv::Mat predict(cv::Mat& image);
 	~DepthAnything();
 	
 private:
-	int input_w = 518;
-	int input_h = 518;
+	int input_w = 224;
+	int input_h = 224;
 	float mean[3] = { 123.675, 116.28, 103.53 };
 	float std[3] = { 58.395, 57.12, 57.375 };
 
@@ -36,6 +36,6 @@ private:
 
 	std::vector<float> preprocess(cv::Mat& image);
 	std::vector<DepthEstimation> postprocess(std::vector<int> mask, int img_w, int img_h);
-	void build(std::string onnxPath, nvinfer1::ILogger& logger);
+	void build(std::string onnxPath, nvinfer1::ILogger& logger, bool use_int8);
 	bool saveEngine(const std::string& filename);
 };

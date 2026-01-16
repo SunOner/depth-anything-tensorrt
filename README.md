@@ -5,17 +5,13 @@ Depth Anything TensorRT CLI
 
 [![python](https://img.shields.io/badge/python-3.10.12-green)](https://www.python.org/downloads/release/python-31012/)
 [![cuda](https://img.shields.io/badge/cuda-11.8-green)](https://developer.nvidia.com/cuda-downloads)
-[![trt](https://img.shields.io/badge/TRT-10.0-green)](https://developer.nvidia.com/tensorrt)
+[![trt](https://img.shields.io/badge/TRT-10%2B-green)](https://developer.nvidia.com/tensorrt)
 [![mit](https://img.shields.io/badge/license-MIT-blue)](https://github.com/spacewalk01/depth-anything-tensorrt/blob/main/LICENSE)
 
 </div>
 
 Depth estimation is the task of measuring the distance of each pixel relative to the camera. This repo provides a TensorRT implementation of the [Depth-Anything](https://github.com/LiheYoung/Depth-Anything) depth estimation model in both C++ and Python, enabling efficient real-time inference.
 
-<p align="center">
-  Depth-Anything-V1
-  <img src="assets/davis_dolphins_result.gif" height="225px" width="720px" />
-</p>
 <p align="center">
   Depth-Anything-V2
   <img src="assets/ferris_wheel_result.gif" height="225px" width="720px" />
@@ -40,13 +36,13 @@ The inference time includes the pre-preprocessing and post-processing stages:
 
 
 > [!NOTE]
-> Inference was conducted using `FP16` precision, with a warm-up period of 10 frames. The reported time corresponds to the last inference.
+> Inference was conducted using `FP16` precision, with a warm-up period of 10 frames. The reported time corresponds to the last inference. By default, engine builds from ONNX now attempt `INT8` (falls back to `FP16` if unavailable); use `--no-int8` to force `FP16`.
 
 ## 🚀 Quick Start
 
 #### C++
 
-- **Step 1**: Create an engine from an onnx model and save it:
+- **Step 1**: Create an engine from an onnx model and save it (defaults to INT8 with FP16 fallback; use `--no-int8` to force FP16):
 ``` shell
 depth-anything-tensorrt.exe -model <onnx model>
 ```
@@ -79,6 +75,8 @@ depth-anything-tensorrt.exe -preview -model depth_anything_vitb14.engine -input 
 depth-anything-tensorrt.exe -model depth_anything_vitb14.engine -input test.mp4 -fps 60
 # use an existing engine file if found
 depth-anything-tensorrt.exe -model depth_anything_vitb14.onnx -input test.mp4 -find-engine
+# force FP16 when building from ONNX
+depth-anything-tensorrt.exe -model depth_anything_vitb14.onnx -input test.mp4 -no-int8
 ```
 
 <p align="center">
@@ -100,6 +98,14 @@ python trt_infer.py --engine <path to trt engine> --img <single-img> --outdir <o
 
 Refer to our [docs/INSTALL.md](https://github.com/spacewalk01/depth-anything-tensorrt/blob/main/docs/INSTALL.md) for C++ environment installation.
 
+Set paths for OpenCV and TensorRT via CMake cache or environment variables:
+
+``` shell
+cmake -S . -B build -DOpenCV_DIR="C:\path\to\opencv\build" -DTENSORRT_DIR="C:\path\to\TensorRT"
+```
+
+Or set environment variables `OpenCV_DIR` and `TENSORRT_DIR` before configuring.
+
 #### Python
 
 ``` shell
@@ -110,31 +116,6 @@ pip install opencv-python
 ``` 
 
 ## 🤖 Model Preparation
-### Depth-Anything-V1
-Perform the following steps to create an onnx model:
-
-1. Download the pretrained [model](https://huggingface.co/spaces/LiheYoung/Depth-Anything/tree/main/checkpoints) and install [Depth-Anything](https://github.com/LiheYoung/Depth-Anything):
-   ``` shell
-   git clone https://github.com/LiheYoung/Depth-Anything
-   cd Depth-Anything
-   pip install -r requirements.txt
-   ```
-  
-2. Copy [dpt.py](https://github.com/spacewalk01/depth-anything-tensorrt/blob/main/depth_anything_v1/dpt.py) in depth_anything_v1 from this repo to `<Depth-Anything>/depth_anything` folder. And, Copy [export_v1.py](https://github.com/spacewalk01/depth-anything-tensorrt/blob/main/depth_anything_v1/export_v1.py) in depth_anything_v1 from this repo to `<Depth-Anything>` folder.
-3. Export the model to onnx format using [export_v1.py](https://github.com/spacewalk01/depth-anything-tensorrt/blob/main/depth_anything_v1/export_v1.py). You will get an onnx file named `depth_anything_vit{}14.onnx`, such as `depth_anything_vitb14.onnx`. Note that I used torch cpu version for exporting the onnx model as it is not necessary to deploy the model on GPU when exporting.
-
-    
-    ``` shell
-    conda create -n depth-anything python=3.8
-    conda activate depth-anything
-    pip install torch torchvision
-    pip install opencv-python
-    pip install onnx
-    cd Depth-Anything
-    python export_v1.py --encoder vitb --load_from depth_anything_vitb14.pth --image_shape 3 518 518
-    ```
-
-
 ### Depth-Anything-V2
 
 1. Clone [Depth-Anything-V2](https://github.com/DepthAnything/Depth-Anything-V2.git) 

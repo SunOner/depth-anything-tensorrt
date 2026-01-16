@@ -9,14 +9,12 @@ set(SOURCES
 	main.cpp
 	utils.cpp
 	depth_anything.cpp
-    # ... add more source files here if needed
 )
 
 # Add headers
 set(HEADERS
 	utils.h
 	depth_anything.h
-    # ... add more header files here if needed
 )
 
 # Find and include CUDA
@@ -24,34 +22,22 @@ find_package(CUDA REQUIRED)
 include_directories(${CUDA_INCLUDE_DIRS})
 
 # Find and include OpenCV
-set(OpenCV_DIR "D:\\Utils\\opencv\\opencv49_cpu\\build")
+set(OpenCV_DIR "$ENV{OpenCV_DIR}" CACHE PATH "Path to OpenCV build directory")
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
 # Set TensorRT path if not set in environment variables
-set(TENSORRT_DIR "D:\\Utils\\TensorRT-10.0.1.6")
+set(TENSORRT_DIR "$ENV{TENSORRT_DIR}" CACHE PATH "Path to TensorRT root directory")
 
 # Include TensorRT
 include_directories(${TENSORRT_DIR}/include)
 link_directories(${TENSORRT_DIR}/lib)
 
-# Read TensorRT version
-file(STRINGS "${TENSORRT_DIR}/include/NvInferVersion.h" tensorrt_version REGEX "#define NV_TENSORRT_MAJOR +[0-9]+")
-string(REGEX MATCH "[0-9]+" tensorrt_version_major ${tensorrt_version})
-
-# Check TensorRT version and set library accordingly
+# TensorRT 10+ library names
 if (WIN32)
-    if (tensorrt_version_major EQUAL 10)
-        set(TENSORRT_LIBS nvinfer_10 nvinfer_plugin_10 nvonnxparser_10)
-    else()
-        set(TENSORRT_LIBS nvinfer nvinfer_plugin nvparsers nvonnxparser)
-    endif()
+    set(TENSORRT_LIBS nvinfer_10 nvinfer_plugin_10 nvonnxparser_10)
 else()
-    if (tensorrt_version_major EQUAL 10)
-        set(TENSORRT_LIBS nvinfer nvinfer_plugin nvonnxparser)
-    else()
-        set(TENSORRT_LIBS nvinfer nvinfer_plugin nvparsers nvonnxparser)
-    endif()
+    set(TENSORRT_LIBS nvinfer nvinfer_plugin nvonnxparser)
 endif()
 
 # Add executable

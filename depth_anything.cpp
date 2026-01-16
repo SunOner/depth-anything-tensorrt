@@ -13,7 +13,7 @@ using namespace nvinfer1;
 DepthAnything::DepthAnything()
 {}
 
-void DepthAnything::init(std::string model_path, nvinfer1::ILogger& logger)
+void DepthAnything::init(std::string model_path, nvinfer1::ILogger& logger, bool use_int8)
 {
     // Deserialize an engine
     if (model_path.find(".onnx") == std::string::npos)
@@ -36,20 +36,13 @@ void DepthAnything::init(std::string model_path, nvinfer1::ILogger& logger)
     // Build an engine from an onnx model
     else
     {
-        build(model_path, logger);
+        build(model_path, logger, use_int8);
         saveEngine(model_path);
     }
 
-#if NV_TENSORRT_MAJOR < 10
-    // Define input dimensions
-    auto input_dims = engine->getBindingDimensions(0);
-    input_h = input_dims.d[2];
-    input_w = input_dims.d[3];
-#else
     auto input_dims = engine->getTensorShape(engine->getIOTensorName(0));
     input_h = input_dims.d[2];
     input_w = input_dims.d[3];
-#endif
 
     // create CUDA stream
     cudaStreamCreate(&stream);
@@ -108,11 +101,8 @@ cv::Mat DepthAnything::predict(cv::Mat& image)
     cudaMemcpyAsync(buffer[0], input.data(), 3 * input_h * input_w * sizeof(float), cudaMemcpyHostToDevice, stream);
 
     // Inference using depth estimation model
-#if NV_TENSORRT_MAJOR < 10
-    context->enqueueV2(buffer, stream, nullptr);
-#else
+
     context->executeV2(buffer);
-#endif
 
     cudaStreamSynchronize(stream);
 
@@ -145,16 +135,30 @@ cv::Mat DepthAnything::predict(cv::Mat& image)
 }
 
 
-void DepthAnything::build(std::string onnxPath, nvinfer1::ILogger& logger)
+void DepthAnything::build(std::string onnxPath, nvinfer1::ILogger& logger, bool use_int8)
 {
     auto builder = createInferBuilder(logger);
     const auto explicitBatch = 1U << static_cast<uint32_t>(NetworkDefinitionCreationFlag::kEXPLICIT_BATCH);
     INetworkDefinition* network = builder->createNetworkV2(explicitBatch);
     IBuilderConfig* config = builder->createBuilderConfig();
-    if (isFP16)
+
+    if (use_int8)
+    {
+        if (builder->platformHasFastInt8())
+        {
+            config->setFlag(BuilderFlag::kINT8);
+        }
+        else
+        {
+            std::cout << "INT8 requested but platform does not support fast INT8. Falling back to FP16." << std::endl;
+            config->setFlag(BuilderFlag::kFP16);
+        }
+    }
+    else
     {
         config->setFlag(BuilderFlag::kFP16);
     }
+    
     nvonnxparser::IParser* parser = nvonnxparser::createParser(*network, logger);
     bool parsed = parser->parseFromFile(onnxPath.c_str(), static_cast<int>(nvinfer1::ILogger::Severity::kINFO));
     IHostMemory* plan{ builder->buildSerializedNetwork(*network, *config) };

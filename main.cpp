@@ -118,6 +118,7 @@ int main(int argc, char** argv) {
     // load selected model
     if (!options["model"].empty()) {
         string model_path = options["model"];
+        bool use_int8 = options["no-int8"].empty();
 
         if (!IsFile(model_path)) {
             cout << "Model not found!" << endl;
@@ -138,7 +139,7 @@ int main(int argc, char** argv) {
                 model_path = alternate_path;
             }
         }
-        depth_model.init(model_path, logger);
+        depth_model.init(model_path, logger, use_int8);
         cout << "Model successfully loaded." << endl << endl;
         model_loaded = true;
     }
