@@ -12,7 +12,7 @@
 
 <p align="center">
   Depth-Anything-V2
-  <img src="assets/depth_one.giff" height="338px" width="600px" />
+  <img src="assets/depth_one.gif" height="338px" width="600px" />
 </p>
 
 > [!NOTE]
