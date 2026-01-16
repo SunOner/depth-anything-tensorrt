@@ -1,39 +1,19 @@
 <div align="left">
 
-Depth Anything TensorRT CLI
+[Depth Anything TensorRT](https://github.com/spacewalk01/depth-anything-tensorrt) feat [sunone_aimbot_cpp](https://github.com/SunOner/sunone_aimbot_cpp)
 ===========================
 
 [![python](https://img.shields.io/badge/python-3.10.12-green)](https://www.python.org/downloads/release/python-31012/)
-[![cuda](https://img.shields.io/badge/cuda-11.8-green)](https://developer.nvidia.com/cuda-downloads)
+[![cuda](https://img.shields.io/badge/cuda-13.0-green)](https://developer.nvidia.com/cuda-downloads)
 [![trt](https://img.shields.io/badge/TRT-10%2B-green)](https://developer.nvidia.com/tensorrt)
 [![mit](https://img.shields.io/badge/license-MIT-blue)](https://github.com/spacewalk01/depth-anything-tensorrt/blob/main/LICENSE)
 
 </div>
 
-Depth estimation is the task of measuring the distance of each pixel relative to the camera. This repo provides a TensorRT implementation of the [Depth-Anything](https://github.com/LiheYoung/Depth-Anything) depth estimation model in both C++ and Python, enabling efficient real-time inference.
-
 <p align="center">
   Depth-Anything-V2
   <img src="assets/ferris_wheel_result.gif" height="225px" width="720px" />
 </p>
-
-
-
-## News
-* **2024-08-20:** Added CLI (xa1on)
-* **2024-06-20:** Added support for TensorRT 10.
-* **2024-06-17:** [Depth Anything V2](https://github.com/DepthAnything/Depth-Anything-V2) has been integrated.
-* **2024-01-23:** The Depth Anything [TensorRT](https://github.com/spacewalk01/depth-anything-tensorrt) version has been created.
-  
-## ⏱️ Performance
-
-The inference time includes the pre-preprocessing and post-processing stages:
-| Device          | Model | Model Input (WxH) |  Image Resolution (WxH)|Inference Time(ms)|
-|:---------------:|:------------:|:------------:|:------------:|:------------:|
-| RTX4090        | Depth-Anything-S  |518x518  |  1280x720    | 3     |
-| RTX4090        | Depth-Anything-B  |518x518  |  1280x720    | 6     |
-| RTX4090        | Depth-Anything-L  |518x518  |  1280x720    | 12    |
-
 
 > [!NOTE]
 > Inference was conducted using `FP16` precision, with a warm-up period of 10 frames. The reported time corresponds to the last inference. By default, engine builds from ONNX now attempt `INT8` (falls back to `FP16` if unavailable); use `--no-int8` to force `FP16`.
@@ -106,17 +86,7 @@ cmake -S . -B build -DOpenCV_DIR="C:\path\to\opencv\build" -DTENSORRT_DIR="C:\pa
 
 Or set environment variables `OpenCV_DIR` and `TENSORRT_DIR` before configuring.
 
-#### Python
-
-``` shell
-cd <tensorrt installation path>/python
-pip install cuda-python
-pip install tensorrt-8.6.0-cp310-none-win_amd64.whl
-pip install opencv-python
-``` 
-
 ## 🤖 Model Preparation
-### Depth-Anything-V2
 
 1. Clone [Depth-Anything-V2](https://github.com/DepthAnything/Depth-Anything-V2.git) 
    ``` shell
@@ -128,21 +98,12 @@ pip install opencv-python
 3. Copy [dpt.py](https://github.com/spacewalk01/depth-anything-tensorrt/blob/main/depth_anything_v2/dpt.py) in depth_anything_v2 from this repo to `<Depth-Anything-V2>/depth_anything_v2` folder. And, Copy [export_v2.py](https://github.com/spacewalk01/depth-anything-tensorrt/blob/main/depth_anything_v2/export_v2.py) in depth_anything_v2 from this repo to `<Depth-Anything-V2>` folder.
 4. Run the following to export the model:
     ``` shell
-    conda create -n depth-anything python=3.8
-    conda activate depth-anything
-    pip install torch torchvision
-    pip install opencv-python
-    pip install onnx
+    python -m venv .venv
+    ".venv/scripts/activate"
+    pip install torch torchvision opencv-python onnxscript
     cd Depth-Anything-V2
-    python export_v2.py --encoder vitb --input-size 518
+    python export_v2.py --encoder vits --input-size 224
     ```
 
 > [!TIP]
 > The width and height of the model input should be divisible by 14, the patch height.
-
-
-## 👏 Acknowledgement
-
-This project is based on the following projects:
-- [Depth-Anything](https://github.com/LiheYoung/Depth-Anything) - Unleashing the Power of Large-Scale Unlabeled Data.
-- [TensorRT](https://github.com/NVIDIA/TensorRT/tree/release/8.6/samples) - TensorRT samples and api documentation.
