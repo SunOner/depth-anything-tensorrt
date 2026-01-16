@@ -2,6 +2,8 @@
 #include <string>
 #include <tuple>
 #include <cmath>
+#include <algorithm>
+#include <cctype>
 #include <unordered_map>
 #include <NvInfer.h>
 #include <opencv2/opencv.hpp>
@@ -23,6 +25,14 @@ void replaceChar(std::string& str, char find, char replace) {
         str[pos] = replace;
         pos++;
     }
+}
+
+std::string toLowerCopy(const std::string& input) {
+    std::string out = input;
+    std::transform(out.begin(), out.end(), out.begin(), [](unsigned char c) {
+        return static_cast<char>(std::tolower(c));
+    });
+    return out;
 }
 
 bool IsPathExist(const std::string& path) {
@@ -89,7 +99,7 @@ int main(int argc, char** argv) {
     bool model_loaded = false;
 
     // all valid video & image extensions
-    vector<string> video_extensions = {"avi", "mp4", "m4v", "mpeg", "mov", "mkv"};
+    vector<string> video_extensions = {"avi", "mp4", "m4v", "mpeg", "mov", "mkv", "gif"};
     vector<string> image_extensions = {"jpeg", "jpg", "png"};
 
     // organizing options & arguements into map
@@ -149,11 +159,12 @@ int main(int argc, char** argv) {
         std::vector<std::string> imagePathList;
         std::vector<std::string> videoPathList;
         string suffix = input.substr(input.find_last_of('.') + 1);
+        string suffix_lower = toLowerCopy(suffix);
         bool suffix_found = false;
         // organize images and videos in path into seperate lists
         if (IsFile(input)) {
             for (string& proper_suffix : image_extensions) {
-                if (suffix == proper_suffix) {
+                if (suffix_lower == proper_suffix) {
                     imagePathList.push_back(input);
                     suffix_found = true;
                     break;
@@ -161,7 +172,7 @@ int main(int argc, char** argv) {
             }
             if (!suffix_found) {
                 for (string& proper_suffix : video_extensions) {
-                    if (suffix == proper_suffix) {
+                    if (suffix_lower == proper_suffix) {
                         videoPathList.push_back(input);
                         suffix_found = true;
                         break;
@@ -224,8 +235,108 @@ int main(int argc, char** argv) {
                         abort();
                     }
                 }
+                current_suffix = videoPath.substr(videoPath.find_last_of('.') + 1);
+                string current_suffix_lower = toLowerCopy(current_suffix);
+                bool is_gif = (current_suffix_lower == "gif");
                 full_output_location = output + generated_name;
 
+                if (is_gif) {
+                    std::vector<cv::Mat> gif_frames;
+                    bool loaded = cv::imreadmulti(videoPath, gif_frames, cv::IMREAD_COLOR);
+                    if (loaded && !gif_frames.empty()) {
+                        int width = gif_frames[0].cols;
+                        int height = gif_frames[0].rows;
+                        double fps;
+                        double frame_total = static_cast<double>(gif_frames.size());
+                        int frame_num = 0;
+                        double previous_tpf = 0;
+                        double estimate = 0;
+                        double tpf = 0;
+                        int estimate_rounded = 0;
+                        int progress = 0;
+
+                        if (!options["fps"].empty()) {
+                            try {
+                                fps = stod(options["fps"]);
+                            } catch (const invalid_argument&) {
+                                cerr << "Invalid fps value!" << endl;
+                                abort();
+                            }
+                        } else {
+                            fps = 25.0;
+                        }
+                        if (fps <= 0) {
+                            fps = 25.0;
+                        }
+
+                        // Create a VideoWriter object to save the processed video
+                        full_output_location += ".mp4";
+
+                        cout << full_output_location << ":" << endl;
+                        int fourcc = cv::VideoWriter::fourcc('m', 'p', '4', 'v');
+                        cv::VideoWriter output_video(full_output_location, fourcc, fps, cv::Size(width, height));
+                        if (!output_video.isOpened()) {
+                            cerr << "Failed to open video writer for: " << full_output_location << endl;
+                            continue;
+                        }
+                        for (const auto& frame_src : gif_frames) {
+                            frame_num++;
+                            if (frame_src.empty()) {
+                                continue;
+                            }
+                            cv::Mat frame = frame_src;
+                            auto start = std::chrono::system_clock::now();
+                            cv::Mat result_d = depth_model.predict(frame);
+                            auto end = chrono::system_clock::now();
+                            tpf = chrono::duration_cast<std::chrono::duration<double, std::milli>>(end - start).count();
+
+                            if (previous_tpf == 0) {
+                                estimate = (frame_total - frame_num) * (tpf / 1000.0);
+                            } else if (frame_num <= 10) {
+                                estimate = (frame_total - frame_num) * (((tpf * (frame_num - 1) + previous_tpf) / frame_num) / 1000.0);
+                            } else {
+                                estimate = (frame_total - frame_num) * (((tpf * (9) + previous_tpf) / 10) / 1000.0);
+                            }
+                            previous_tpf = tpf;
+                            progress = floor((frame_num / frame_total) * 100);
+                            cout << "frame#:" << setw(6) << frame_num << " progress:" << setw(3) << progress << "% time per frame:" << setw(9) << tpf << "ms fps:" << setw(4) << floor(100 / (tpf / 1000)) / 100.0 << " eta:";
+
+                            if (estimate >= 60) {
+                                estimate_rounded = estimate;
+                                cout << setw(3) << floor(estimate / 60) << ":" << setw(2) << estimate_rounded % 60;
+                            } else {
+                                cout << setw(5) << floor(estimate * 100) / 100.0 << "sec";
+                            }
+
+                            cout << " [" << string(floor(progress / 2.5), 'I') << string(40 - floor(progress / 2.5), ' ') << "]";
+
+                            if (options["one-line"].empty()) {
+                                cout << endl;
+                            } else {
+                                cout << "\t\r" << flush;
+                            }
+                            if (!options["preview"].empty()) {
+                                cv::Mat show_frame;
+                                frame.copyTo(show_frame);
+                                cv::Mat result;
+                                cv::hconcat(show_frame, result_d, result);
+                                cv::resize(result, result, cv::Size(width, height / 2)); //IMPORTANT
+                                imshow("Depth: Before -> After", result);
+                            }
+                            output_video.write(result_d);
+                            cv::waitKey(1);
+                        }
+                        if (!options["one-line"].empty()) {
+                            cout << endl;
+                        }
+                        // Release resources
+                        cv::destroyAllWindows();
+                        output_video.release();
+                        cout << full_output_location << " finished generating." << endl << endl;
+                        continue;
+                    }
+                    cerr << "GIF decode failed, falling back to VideoCapture: " << videoPath << endl;
+                }
                 // open cap
                 cv::VideoCapture cap(videoPath);
 
@@ -250,12 +361,21 @@ int main(int argc, char** argv) {
                 } else {
                     fps = cap.get(cv::CAP_PROP_FPS);
                 }
+                if (fps <= 0) {
+                    fps = 25.0;
+                }
 
                 // Create a VideoWriter object to save the processed video
                 full_output_location += ".avi";
 
                 cout << full_output_location << ":" << endl;
-                cv::VideoWriter output_video(full_output_location, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'), fps, cv::Size(width, height));
+                int fourcc = cv::VideoWriter::fourcc('M', 'J', 'P', 'G');
+                cv::VideoWriter output_video(full_output_location, fourcc, fps, cv::Size(width, height));
+                if (!output_video.isOpened()) {
+                    cerr << "Failed to open video writer for: " << full_output_location << endl;
+                    cap.release();
+                    continue;
+                }
                 while (1) {
                     frame_num ++;
                     cv::Mat frame;

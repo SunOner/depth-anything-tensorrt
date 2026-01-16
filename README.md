@@ -12,7 +12,7 @@
 
 <p align="center">
   Depth-Anything-V2
-  <img src="assets/ferris_wheel_result.gif" height="225px" width="720px" />
+  <img src="assets/depth_one.giff" height="338px" width="600px" />
 </p>
 
 > [!NOTE]
@@ -43,6 +43,8 @@ depth-anything-tensorrt.exe -model depth_anything_vitb14.engine -input test.jpg
 depth-anything-tensorrt.exe -model depth_anything_vitb14.engine -input data # folder containing videos/images
 # infer video
 depth-anything-tensorrt.exe -model depth_anything_vitb14.engine -input test.mp4 # the video path
+# infer gif (output saved as .mp4)
+depth-anything-tensorrt.exe -model depth_anything_vitb14.engine -input test.gif
 # specify output location
 depth-anything-tensorrt.exe -model depth_anything_vitb14.engine -input test.mp4 -output result # rendered depth maps will go into the "results" directory
 # display progress in one line rather than multiple
@@ -58,10 +60,6 @@ depth-anything-tensorrt.exe -model depth_anything_vitb14.onnx -input test.mp4 -f
 # force FP16 when building from ONNX
 depth-anything-tensorrt.exe -model depth_anything_vitb14.onnx -input test.mp4 -no-int8
 ```
-
-<p align="center">
-  <img src="assets/usage-example.png"/>
-</p>
 
 #### Python
 
