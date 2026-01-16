@@ -14,9 +14,6 @@
   <img src="assets/depth_one.gif" height="338px" width="600px" />
 </p>
 
-> [!NOTE]
-> Inference was conducted using `FP16` precision, with a warm-up period of 10 frames. The reported time corresponds to the last inference. By default, engine builds from ONNX now attempt `INT8` (falls back to `FP16` if unavailable); use `--no-int8` to force `FP16`.
-
 ## 🚀 Quick Start
 
 #### C++
